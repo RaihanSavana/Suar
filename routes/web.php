@@ -5,43 +5,61 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// Import your new controllers
+// Import your controllers
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\PublicController;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+/*
+|--------------------------------------------------------------------------
+| Public Static Routes (Define these first)
+|--------------------------------------------------------------------------
+*/
+Route::get('/', [PublicController::class, 'home'])->name('home');
+Route::get('/news', [PublicController::class, 'newsIndex'])->name('public.news.index');
+Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
 
+/*
+|--------------------------------------------------------------------------
+| Authenticated Routes (This group contains /news/create)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->middleware(['verified'])->name('dashboard');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // News Routes (Resourceful)
-    // Most news actions (create, store, edit, update, destroy) typically require auth.
-    // 'show' and 'index' might be public or also require auth, depending on your app.
-    // For this example, let's put them all under 'auth' for simplicity,
-    // but you can define public 'index' and 'show' routes separately if needed.
-    Route::resource('news', NewsController::class);
+    // Defines /news/create, /news (POST for store), /news/{news}/edit etc.
+    // We except 'show' and 'index' because they are handled by our public routes.
+    Route::resource('news', NewsController::class)->except(['show']);
 
-    // Category Routes (Resourceful)
-    // Typically, managing categories (create, store, edit, update, destroy) is an admin/auth-only task.
-    // 'index' and 'show' are often public.
-    Route::resource('categories', CategoryController::class);
+    // Defines /categories/create, etc.
+    // We except 'show' and 'index' because they are handled by our public routes.
+    Route::resource('categories', CategoryController::class)->except(['show']);
 });
 
-// If you want the news index and show to be public as well, define them outside the auth group:
-// Route::get('/news', [NewsController::class, 'index'])->name('news.index.public'); // Use a different name if you also have an auth one
-// Route::get('/news/{news}', [NewsController::class, 'show'])->name('news.show.public'); // Assumes slug for binding
 
+/*
+|--------------------------------------------------------------------------
+| Public Wildcard Routes (Define these LAST)
+|--------------------------------------------------------------------------
+|
+| These have wildcards, so they come after the more specific routes like
+| /news/create to avoid conflicts.
+|
+*/
+Route::get('/news/{news}', [PublicController::class, 'showNews'])->name('news.show');
+Route::get('/categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
+
+
+/*
+|--------------------------------------------------------------------------
+| Authentication Routes (Login, Register, etc.)
+|--------------------------------------------------------------------------
+*/
 require __DIR__.'/auth.php';

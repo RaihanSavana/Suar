@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-// Reusable Input components (can be moved to separate files)
+// Reusable Input components
 const InputLabel = ({ forInput, value, className, children }) => (
     <label htmlFor={forInput} className={`block font-medium text-sm text-gray-700 ` + className}>
         {value ? value : children}
@@ -46,24 +46,26 @@ const PrimaryButton = ({ className = '', disabled, children, ...props }) => (
 
 
 export default function CreateEditForm({ auth, category }) {
-    const isEditing = !!category; // True if 'category' prop is provided
+    const isEditing = !!category;
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    // --- FIX #1: Remove `_method` from the initial data ---
+    const { data, setData, post, put, processing, errors, reset } = useForm({
         name: category?.name || '',
         slug: category?.slug || '',
         description: category?.description || '',
-        _method: 'PUT', // We'll use this for method spoofing on the update
     });
 
+    // --- FIX #2: Use put() for editing and post() for creating ---
     const handleSubmit = (e) => {
         e.preventDefault();
 
         if (isEditing) {
-            // For updates, we use POST but spoof it as PUT. Inertia handles this nicely.
-            post(route('categories.update', category.slug), {
+            // Use the put() function for updates. Inertia handles the method spoofing.
+            put(route('categories.update', category.slug), {
                 onSuccess: () => reset(),
             });
         } else {
+            // Use the post() function for creating.
             post(route('categories.store'), {
                 onSuccess: () => reset(),
             });
